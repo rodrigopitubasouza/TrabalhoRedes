@@ -25,8 +25,7 @@ public class Servidor implements Runnable {
     private volatile String numeros;
 
     private Thread thread;
-    Date jogo = new Date();
-    String jogoInicial;
+    
     boolean aux = false;
 
     public Servidor(int port, String numeros) throws Exception {
@@ -34,8 +33,7 @@ public class Servidor implements Runnable {
         this.numeros = numeros;
         inicializado = false;
         executando = false;
-        jogo.setHours(21);
-        jogoInicial = data;
+        
 
         open(port);
     }
@@ -120,11 +118,10 @@ public class Servidor implements Runnable {
         
         
         int d;
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         data = sdf.format(new Date());
-        d = Integer.parseInt(data.substring(0, 2)) - 1;
-        data = String.valueOf(d) + data.substring(2);
-        System.out.println(new Date());
+       
+        
 
         try {
             Class.forName("com.mysql.jdbc.Driver");

@@ -120,7 +120,7 @@ public class Receptor implements Runnable {
                                 msg = verificaSenha(conexao, user.getNome(), msgSenha);
                                 if ("true".equals(msg)) {
                                     out.println(msg);
-                                    conversacao(in, out, numerosServer, user);
+                                    conversacao(in, out, numerosServer, user,c);
                                     break;
                                 }
 
@@ -139,7 +139,7 @@ public class Receptor implements Runnable {
                                 if (msgSenha.equals(c.decrypt(in.readLine(), c.getChaveencriptacao()))) {
                                     out.println("true");
                                     user = adicionaUsuario(nomeUsuario, msgSenha, conexao);
-                                    conversacao(in, out, numerosServer, user);
+                                    conversacao(in, out, numerosServer, user,c);
                                     break;
                                 }else
                                     out.println("false");
@@ -157,26 +157,43 @@ public class Receptor implements Runnable {
         }
     }
 
-    public static void conversacao(BufferedReader in, PrintStream out, String numerosServer, Usuario user) throws IOException, SQLException {
+    public static void conversacao(BufferedReader in, PrintStream out, String numerosServer, Usuario user,Criptografias c) throws IOException, SQLException, Exception {
         String msg;
         String numeros;
         String ticket;
         int cont;
+        int i;
         boolean aux = true;
         out.println(user.getNome());
         while (aux) {
             msg = in.readLine();
             switch (msg) {
                 case "1":
-
+                i=0;
                     while (true) {
                         numeros = "";
-                        numeros = in.readLine() + " " + in.readLine() + " " + in.readLine() + " " + in.readLine() + " " + in.readLine() + " " + in.readLine();
+                        while(i<6){
+                        msg = in.readLine();
+                        if(!"-1".equals(msg)){
+                            if(i!= 5)
+                                numeros = numeros + msg + " ";
+                            else
+                                numeros = numeros + msg;
+                                        
+                            i++;
+                        }
+                        else
+                            i=7;                            
+                        }
+                        if(i==7)
+                        break;
+                        
                         out.println(numeros);
                         msg = in.readLine();
                         if ("1".equals(msg)) {
                            ticket = adicionaNumeros(numeros, user.getId(), conexao);
                            cont = quantidadeTicket(user.getId(), conexao) + 1;
+                           ticket = c.encrypt(ticket, c.getChaveencriptacao());
                             out.println(ticket);
                             out.println(cont);
                             break;
@@ -194,8 +211,14 @@ public class Receptor implements Runnable {
                     break;
                 case "3":
                     msg = in.readLine();
+                    msg = c.decrypt(msg, c.getChaveencriptacao());
                     out.println(verificaTicket(msg, conexao, user.getId(), data, numerosServer));
 
+                    break;
+                case "4":
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+                    data = sdf.format(new Date());
+                    numerosServer = "11 12 13 14 15 16";
                     break;
                 case "0":
                     aux = false;
@@ -237,7 +260,8 @@ public class Receptor implements Runnable {
         System.out.println(sql);
         Statement operacao = conexao.createStatement();
         operacao.executeUpdate(sql);
-        Usuario u = new Usuario(1, nomeUsuario);
+        
+        Usuario u = verificaUsuario(conexao, nomeUsuario);
         return u;
     }
 
@@ -245,11 +269,13 @@ public class Receptor implements Runnable {
 
         Statement operacao = conexao.createStatement();
         ResultSet resultado = operacao.executeQuery("SELECT numero FROM ticket WHERE ticket ='" + msg + "' AND idCliente ='" + id + "'");
-        System.out.println("SELECT numero FROM ticket WHERE ticket ='" + msg + "' AND idCliente ='" + id + "'");
+        
         if (resultado.next()) {
             String numeros = resultado.getString("numero");
-            if (numeros.substring(17).equals(numerosServer)) {
-                if (data.substring(0,10).equals(numeros.substring(0, 10)) && numeros.substring(11, 16).compareTo("21:00") < 0) {
+            String hora = numeros.substring(11,13) + numeros.substring(14, 16) + numeros.substring(17,19);
+            String dataHora = data.substring(11,13) + data.substring(14,16) + data.substring(17,19);
+            if (numeros.substring(20).equals(numerosServer)) {
+                if (data.substring(0,10).compareTo(numeros.substring(0, 10)) >0 || hora.compareTo(dataHora) < 0) {
                     return "Você foi o ganhador";
                 }
             }
@@ -259,12 +285,12 @@ public class Receptor implements Runnable {
 
     private static String adicionaNumeros(String numeros, int id, Connection conexao) throws SQLException {
         String ticket;
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy hh:mm");
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         numeros = sdf.format(new Date()) +" "+ numeros;
         ticket = Criptografias.stringHexa(Criptografias.gerarHash(numeros, "MD5"));
 
         String sql = "INSERT INTO ticket (idCliente,numero,ticket) VALUES ('" + id + "','" + numeros + "'," + "'" + ticket + "')";
-        System.out.println(sql);
+        
         Statement operacao = conexao.createStatement();
         operacao.executeUpdate(sql);
         return ticket;
